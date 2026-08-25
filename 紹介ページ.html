@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>サービス紹介 | KYUSYU2026</title>
+  <style>
+    /* リセット CSS */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f9f9f9;
+    }
+
+    /* ヘッダー */
+    header {
+      background-color: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #0066cc;
+    }
+
+    .nav-links {
+      display: flex;
+      list-style: none;
+      gap: 1.5rem;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: #555;
+      font-weight: 500;
+      transition: color 0.3s;
+    }
+
+    .nav-links a:hover {
+      color: #0066cc;
+    }
+
+    /* ヒーローセクション */
+    .hero {
+      background: linear-gradient(135deg, #0066cc, #004080);
+      color: #fff;
+      text-align: center;
+      padding: 5rem 1rem;
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      line-height: 1.3;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+      opacity: 0.9;
+    }
+
+    .btn {
+      display: inline-block;
+      background-color: #ff9900;
+      color: #fff;
+      padding: 0.8rem 2rem;
+      border-radius: 5px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: background-color 0.3s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background-color: #e68a00;
+    }
+
+    /* メインコンテンツ */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 4rem 2rem;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 3rem;
+      position: relative;
+    }
+
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 50px;
+      height: 3px;
+      background-color: #0066cc;
+      margin: 0.5rem auto 0;
+    }
+
+    /* 特長・サービスカード */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+    }
+
+    .card {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      text-align: center;
+      transition: transform 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+    .card-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .card h3 {
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      color: #0066cc;
+    }
+
+    /* お問い合わせフォーム */
+    .contact-form {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    .contact-info {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      color: #555;
+    }
+
+    .contact-info a {
+      color: #0066cc;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .contact-info a:hover {
+      text-decoration: underline;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.8rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      height: 120px;
+    }
+
+    /* フッター */
+    footer {
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      padding: 1.5rem 0;
+      margin-top: 2rem;
+    }
+
+    /* レスポンシブ対応 */
+    @media (max-width: 768px) {
+      .nav-container {
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .hero h1 {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <header>
+    <div class="nav-container">
+      <div class="logo">KYUSYU2026</div>
+      <ul class="nav-links">
+        <li><a href="#about">概要</a></li>
+        <li><a href="#services">特長</a></li>
+        <li><a href="#contact">お問い合わせ</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- ヒーローエリア -->
+  <section class="hero">
+    <h1>あなたの未来を<br>描く。支える。創る</h1>
+    <p>もっと何かできるはず。</p>
+    <a href="#contact" class="btn">今すぐ問い合わせる</a>
+  </section>
+
+  <!-- 概要・特長セクション -->
+  <section id="services" class="container">
+    <h2 class="section-title">私たちの特長</h2>
+    <div class="features-grid">
+      <div class="card">
+        <div class="card-icon">🎨</div>
+        <h3>未来を描く</h3>
+        <p>お客様の理想を形にし、クリアなビジョンを共に描きます。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🤝</div>
+        <h3>未来を支える</h3>
+        <p>確かな技術と手厚いサポートで、持続可能な発展を支えます。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🚀</div>
+        <h3>未来を創る</h3>
+        <p>「もっと何かできるはず。」の精神で、新しい価値を創出します。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- お問い合わせセクション -->
+  <section id="contact" class="container">
+    <h2 class="section-title">お問い合わせ</h2>
+    
+    <div class="contact-info">
+      <p>メールでのご連絡はこちら：<a href="mailto:fukuoka.itosima.maebaru@gmail.com">fukuoka.itosima.maebaru@gmail.com</a></p>
+    </div>
+
+    <form class="contact-form" action="https://formsubmit.co/fukuoka.itosima.maebaru@gmail.com" method="POST">
+      <div class="form-group">
+        <label for="name">お名前</label>
+        <input type="text" id="name" name="name" required placeholder="山田 太郎">
+      </div>
+      <div class="form-group">
+        <label for="email">メールアドレス</label>
+        <input type="email" id="email" name="email" required placeholder="example@mail.com">
+      </div>
+      <div class="form-group">
+        <label for="message">メッセージ</label>
+        <textarea id="message" name="message" required placeholder="お問い合わせ内容を入力してください"></textarea>
+      </div>
+      <button type="submit" class="btn" style="width: 100%;">送信する</button>
+    </form>
+  </section>
+
+  <!-- フッター -->
+  <footer>
+    <p>&copy; 2026 KYUSYU2026. All rights reserved.</p>
+  </footer>
+
+  <!-- 動作用JavaScript -->
+  <script>
+    // スムーススクロールの処理
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth'
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
