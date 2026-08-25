@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>かいしゃメーカー</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap');
+
+    :root {
+      --primary-orange: #FF7B00;
+      --secondary-orange: #FF9E00;
+      --light-orange: #FFF3E0;
+      --accent-yellow: #FFD000;
+      --bg-color: #FFF8F0;
+      --text-color: #4A3B32;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    /* --- 起動画面 --- */
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--primary-orange);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+
+    .splash-title {
+      color: #FFFFFF;
+      font-size: 3.5rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-shadow: 0 4px 0 rgba(0,0,0,0.1);
+      animation: bounce 1.5s infinite alternate;
+    }
+
+    .loading-container {
+      margin-top: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .loading-container.show {
+      opacity: 1;
+    }
+
+    .loading-text {
+      color: #FFFFFF;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 6px solid #FFFFFF;
+      border-top: 6px solid var(--accent-yellow);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes bounce {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-15px); }
+    }
+
+    /* --- メイン作成画面 --- */
+    #main-app {
+      width: 100%;
+      max-width: 650px;
+      padding: 20px;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    #main-app.show {
+      display: block;
+      opacity: 1;
+    }
+
+    .header-banner {
+      background: linear-gradient(135deg, var(--primary-orange), var(--secondary-orange));
+      color: white;
+      text-align: center;
+      padding: 20px;
+      border-radius: 25px;
+      box-shadow: 0 8px 0 #D96800;
+      margin-bottom: 30px;
+      border: 4px solid #FFF;
+    }
+
+    .header-banner h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      text-shadow: 0 2px 0 rgba(0,0,0,0.15);
+    }
+
+    .form-group {
+      background: white;
+      padding: 25px;
+      border-radius: 20px;
+      box-shadow: 0 6px 0 #E8DCCB;
+      margin-bottom: 25px;
+      border: 3px solid var(--light-orange);
+    }
+
+    .form-group h2 {
+      font-size: 1.3rem;
+      color: var(--primary-orange);
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-group h2::before {
+      content: '★';
+      color: var(--accent-yellow);
+      font-size: 1.5rem;
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 12px 15px;
+      font-size: 1.1rem;
+      border: 3px solid var(--light-orange);
+      border-radius: 12px;
+      outline: none;
+      background-color: #FAFAFA;
+      transition: border-color 0.3s;
+    }
+
+    input[type="text"]:focus, textarea:focus {
+      border-color: var(--secondary-orange);
+      background-color: #FFF;
+    }
+
+    textarea {
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    /* ボタンデザイン */
+    .btn {
+      background-color: var(--primary-orange);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 5px 0 #C96100;
+      transition: all 0.1s ease;
+      display: inline-block;
+    }
+
+    .btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 1px 0 #C96100;
+    }
+
+    /* チェックボックス（ボタン風ラジオ風切り替え） */
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .custom-checkbox {
+      position: relative;
+    }
+
+    .custom-checkbox input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .checkbox-label {
+      display: inline-block;
+      padding: 10px 18px;
+      background-color: #F0F0F0;
+      color: var(--text-color);
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .custom-checkbox input[type="checkbox"]:checked + .checkbox-label {
+      background-color: var(--light-orange);
+      color: var(--primary-orange);
+      border-color: var(--primary-orange);
+    }
+
+    .custom-type-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .custom-type-container input {
+      flex: 1;
+    }
+
+    /* キャンバス・描画エリア */
+    .paint-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+
+    #paint-area {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    canvas {
+      border: 3px dashed var(--secondary-orange);
+      border-radius: 15px;
+      background-color: #FFFFFF;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .color-picker {
+      width: 35px;
+      height: 35px;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 18px;
+      font-size: 1.5rem;
+      background-color: #4CAF50;
+      box-shadow: 0 6px 0 #2E7D32;
+      margin-top: 10px;
+    }
+
+    .btn-submit:active {
+      box-shadow: 0 1px 0 #2E7D32;
+    }
+
+    .btn-clear {
+      background-color: #FF5252;
+      box-shadow: 0 4px 0 #FF1744;
+      font-size: 0.9rem;
+      padding: 8px 16px;
+    }
+
+    .btn-clear:active {
+      box-shadow: 0 1px 0 #FF1744;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 起動画面 -->
+  <div id="splash-screen">
+    <div class="splash-title">KYUSYU2026</div>
+    <div class="loading-container" id="loading-box">
+      <div class="loading-text">ただいま よみこみちゅう...</div>
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- メイン画面 -->
+  <div id="main-app">
+    <div class="header-banner">
+      <h1>🏢 かいしゃメーカー 🏢</h1>
+    </div>
+
+    <!-- 名前を決めよう -->
+    <div class="form-group">
+      <h2>なまえを決めよう</h2>
+      <input type="text" id="company-name" placeholder="例：たのしい おかし株式会社">
+    </div>
+
+    <!-- ロゴを描こう -->
+    <div class="form-group">
+      <h2>ロゴを描こう</h2>
+      <div class="paint-container">
+        <button type="button" class="btn" id="start-paint-btn">フリーペイントを開始</button>
+        <div id="paint-area">
+          <canvas id="logo-canvas" width="260" height="260"></canvas>
+          <div class="controls">
+            <input type="color" id="pen-color" value="#FF7B00" class="color-picker">
+            <button type="button" class="btn btn-clear" id="clear-canvas-btn">やりなおす</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 会社の種類を選ぼう -->
+    <div class="form-group">
+      <h2>会社の種類を選ぼう</h2>
+      <div class="checkbox-group">
+        <label class="custom-checkbox">
+          <input type="checkbox" name="company-type" value="株式会社" onclick="selectOnlyOne(this)">
+          <span class="checkbox-label">株式会社</span>
+        </label>
+        <label class="custom-checkbox">
+          <input type="checkbox" name="company-type" value="有限会社" onclick="selectOnlyOne(this)">
+          <span class="checkbox-label">有限会社</span>
+        </label>
+        <label class="custom-checkbox">
+          <input type="checkbox" name="company-type" value="仮装会社" onclick="selectOnlyOne(this)">
+          <span class="checkbox-label">仮装会社</span>
+        </label>
+      </div>
+      <div class="custom-type-container">
+        <input type="text" id="custom-type-input" placeholder="じぶんでかんがえた会社の種類">
+        <span style="font-weight: bold;">会社</span>
+      </div>
+    </div>
+
+    <!-- 何をする会社かな？ -->
+    <div class="form-group">
+      <h2>何をする会社かな？</h2>
+      <textarea id="company-description" rows="10" placeholder="例：世界中のみんなを笑顔にする、おいしいお菓子をたくさんつくる会社です！"></textarea>
+    </div>
+
+    <!-- 決定ボタン -->
+    <button type="button" class="btn btn-submit" id="submit-btn">決定！</button>
+  </div>
+
+  <script>
+    // --- 起動シーケンス ---
+    window.addEventListener('DOMContentLoaded', () => {
+      const loadingBox = document.getElementById('loading-box');
+      const splashScreen = document.getElementById('splash-screen');
+      const mainApp = document.getElementById('main-app');
+
+      // 2秒後に「読み込み中」を表示
+      setTimeout(() => {
+        loadingBox.classList.add('show');
+        
+        // 超重たい処理を実行
+        setTimeout(() => {
+          heavyProcessing();
+          
+          // 処理完了後、画面切り替え
+          splashScreen.style.opacity = '0';
+          setTimeout(() => {
+            splashScreen.style.display = 'none';
+            mainApp.classList.add('show');
+          }, 500);
+        }, 100);
+      }, 2000);
+    });
+
+    // 超重たい処理（CPUを意図的に稼働）
+    function heavyProcessing() {
+      const iterations = 50000000;
+      let val = 0;
+      for (let i = 0; i < iterations; i++) {
+        val += Math.sqrt(i) * Math.sin(i);
+      }
+    }
+
+    // --- チェックボックス単一選択制御 ---
+    function selectOnlyOne(checkbox) {
+      const checkboxes = document.getElementsByName('company-type');
+      checkboxes.forEach((item) => {
+        if (item !== checkbox) item.checked = false;
+      });
+    }
+
+    // --- フリーペイント処理 ---
+    const startPaintBtn = document.getElementById('start-paint-btn');
+    const paintArea = document.getElementById('paint-area');
+    const canvas = document.getElementById('logo-canvas');
+    const ctx = canvas.getContext('2d');
+    const penColor = document.getElementById('pen-color');
+    const clearCanvasBtn = document.getElementById('clear-canvas-btn');
+
+    let isDrawing = false;
+
+    // キャンバス背景初期化（白）
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    startPaintBtn.addEventListener('click', () => {
+      startPaintBtn.style.display = 'none';
+      paintArea.style.display = 'flex';
+    });
+
+    function startDrawing(e) {
+      isDrawing = true;
+      draw(e);
+    }
+
+    function stopDrawing() {
+      isDrawing = false;
+      ctx.beginPath();
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = penColor.value;
+
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
+
+    // マウス・タッチイベント登録
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mousemove', draw);
+
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      startDrawing(e);
+    });
+    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      draw(e);
+    });
+
+    clearCanvasBtn.addEventListener('click', () => {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+    });
+
+    // 決定ボタンの動作
+    document.getElementById('submit-btn').addEventListener('click', () => {
+      alert('すばらしい会社が完成したよ！');
+    });
+  </script>
+</body>
+</html>
