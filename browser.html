@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Mini Browser</title>
+<style>
+    body {
+        margin: 0;
+        font-family: sans-serif;
+        background: #222;
+        color: #fff;
+    }
+    #topbar {
+        padding: 10px;
+        background: #333;
+        display: flex;
+        gap: 10px;
+    }
+    #url {
+        flex: 1;
+        padding: 8px;
+        border-radius: 5px;
+        border: none;
+    }
+    #go {
+        padding: 8px 15px;
+        border: none;
+        background: #4caf50;
+        color: #fff;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    iframe {
+        width: 100%;
+        height: calc(100vh - 50px);
+        border: none;
+        background: #111;
+    }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+    <input id="url" type="text" placeholder="URLを入力ゴン（例: https://example.com）">
+    <button id="go">開くゴン</button>
+</div>
+
+<iframe id="view" src=""></iframe>
+
+<script>
+document.getElementById("go").onclick = function() {
+    const u = document.getElementById("url").value;
+    document.getElementById("view").src = u;
+};
+</script>
+
+</body>
+</html>
