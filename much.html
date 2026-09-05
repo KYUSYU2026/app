@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>マッチゲーム</title>
+<style>
+    body {
+        background: #111;
+        color: #fff;
+        font-family: sans-serif;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h1 {
+        margin-bottom: 10px;
+    }
+
+    #game {
+        display: grid;
+        grid-template-columns: repeat(4, 120px);
+        grid-gap: 15px;
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+    .card {
+        width: 120px;
+        height: 120px;
+        background: #444;
+        border-radius: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 50px;
+        cursor: pointer;
+        transition: transform 0.3s ease, background 0.3s ease;
+        user-select: none;
+    }
+
+    .card.flipped {
+        background: #fff;
+        color: #000;
+        transform: rotateY(180deg);
+    }
+
+    .card.matched {
+        background: #0f0;
+        color: #000;
+        cursor: default;
+    }
+</style>
+</head>
+<body>
+
+<h1>マッチゲーム ゴン</h1>
+<p>同じ絵文字を見つけてペアを作るゴン</p>
+
+<div id="game"></div>
+
+<script>
+    const emojis = ["🍎","🍎","⭐","⭐","🔥","🔥","🎮","🎮","🐱","🐱","⚡","⚡","🌙","🌙","🍔","🍔"];
+    const game = document.getElementById("game");
+
+    // シャッフル
+    emojis.sort(() => Math.random() - 0.5);
+
+    let flippedCards = [];
+    let lock = false;
+
+    emojis.forEach((emoji) => {
+        const card = document.createElement("div");
+        card.classList.add("card");
+        card.dataset.emoji = emoji;
+        card.innerHTML = "";
+
+        card.addEventListener("click", () => {
+            if (lock || card.classList.contains("flipped") || card.classList.contains("matched")) return;
+
+            card.classList.add("flipped");
+            card.innerHTML = emoji;
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                lock = true;
+                setTimeout(() => {
+                    const [c1, c2] = flippedCards;
+                    if (c1.dataset.emoji === c2.dataset.emoji) {
+                        c1.classList.add("matched");
+                        c2.classList.add("matched");
+                    } else {
+                        c1.classList.remove("flipped");
+                        c2.classList.remove("flipped");
+                        c1.innerHTML = "";
+                        c2.innerHTML = "";
+                    }
+                    flippedCards = [];
+                    lock = false;
+                }, 700);
+            }
+        });
+
+        game.appendChild(card);
+    });
+</script>
+
+</body>
+</html>
