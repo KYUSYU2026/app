@@ -2,149 +2,66 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Mini Browser with Search</title>
+<title>Local Search Browser</title>
 <style>
     body {
-        margin: 0;
-        font-family: sans-serif;
         background: #222;
         color: #fff;
+        font-family: sans-serif;
+        margin: 0;
+        padding: 20px;
     }
-    #topbar {
-        padding: 8px;
-        background: #333;
-        display: flex;
-        gap: 8px;
-        align-items: center;
-    }
-    #url, #search {
-        flex: 1;
-        padding: 6px;
-        border-radius: 4px;
-        border: none;
-    }
-    button {
-        padding: 6px 10px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        background: #555;
-        color: #fff;
-    }
-    button:disabled {
-        background: #444;
-        cursor: default;
-    }
-    #go {
-        background: #4caf50;
-    }
-    #searchBtn {
-        background: #2196f3;
-    }
-    iframe {
+    #search {
         width: 100%;
-        height: calc(100vh - 50px);
+        padding: 10px;
+        border-radius: 5px;
         border: none;
-        background: #111;
+        margin-bottom: 20px;
+    }
+    .result {
+        background: #333;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
     }
 </style>
 </head>
 <body>
 
-<div id="topbar">
-    <button id="back" disabled>← 戻る</button>
-    <button id="forward" disabled>進む →</button>
+<h2>ローカル検索ブラウザ（iframeなし）ゴン</h2>
 
-    <input id="url" type="text" placeholder="URLを入力ゴン">
-    <button id="go">開くゴン</button>
+<input id="search" type="text" placeholder="検索ワードを入力ゴン">
 
-    <input id="search" type="text" placeholder="検索ワードを入力ゴン">
-    <button id="searchBtn">検索ゴン</button>
-</div>
-
-<iframe id="view" src=""></iframe>
+<div id="results"></div>
 
 <script>
-const historyStack = [];
-let currentIndex = -1;
+// 🔍 検索対象データ（自由に追加できるゴン）
+const pages = [
+    { title: "HTML入門", content: "HTMLはWebページを作るための言語ゴン。" },
+    { title: "JavaScript", content: "JSはブラウザで動くプログラムゴン。" },
+    { title: "CSS", content: "CSSはデザインを担当するゴン。" },
+    { title: "糸島市", content: "糸島市は自然が豊かで最高ゴン。" }
+];
 
-const urlInput = document.getElementById("url");
-const searchInput = document.getElementById("search");
-const view = document.getElementById("view");
-const backBtn = document.getElementById("back");
-const forwardBtn = document.getElementById("forward");
-const goBtn = document.getElementById("go");
-const searchBtn = document.getElementById("searchBtn");
+const searchBox = document.getElementById("search");
+const results = document.getElementById("results");
 
-function updateButtons() {
-    backBtn.disabled = currentIndex <= 0;
-    forwardBtn.disabled = currentIndex >= historyStack.length - 1;
-}
+searchBox.addEventListener("input", function() {
+    const keyword = searchBox.value.trim();
+    results.innerHTML = "";
 
-function openUrl(url) {
-    if (!url) return;
-
-    if (currentIndex < historyStack.length - 1) {
-        historyStack.splice(currentIndex + 1);
-    }
-
-    historyStack.push(url);
-    currentIndex = historyStack.length - 1;
-
-    view.src = url;
-    urlInput.value = url;
-    updateButtons();
-}
-
-backBtn.onclick = function() {
-    if (currentIndex > 0) {
-        currentIndex--;
-        const url = historyStack[currentIndex];
-        view.src = url;
-        urlInput.value = url;
-        updateButtons();
-    }
-};
-
-forwardBtn.onclick = function() {
-    if (currentIndex < historyStack.length - 1) {
-        currentIndex++;
-        const url = historyStack[currentIndex];
-        view.src = url;
-        urlInput.value = url;
-        updateButtons();
-    }
-};
-
-goBtn.onclick = function() {
-    const url = urlInput.value.trim();
-    openUrl(url);
-};
-
-urlInput.addEventListener("keydown", function(e) {
-    if (e.key === "Enter") {
-        openUrl(urlInput.value.trim());
-    }
-});
-
-// 🔍 検索機能ゴン
-searchBtn.onclick = function() {
-    const keyword = searchInput.value.trim();
     if (!keyword) return;
 
-    // Google検索URLを生成ゴン
-    const searchUrl = "https://www.google.com/search?q=" + encodeURIComponent(keyword);
+    const filtered = pages.filter(p =>
+        p.title.includes(keyword) || p.content.includes(keyword)
+    );
 
-    openUrl(searchUrl);
-};
-
-searchInput.addEventListener("keydown", function(e) {
-    if (e.key === "Enter") {
-        const keyword = searchInput.value.trim();
-        if (!keyword) return;
-        const searchUrl = "https://www.google.com/search?q=" + encodeURIComponent(keyword);
-        openUrl(searchUrl);
-    }
+    filtered.forEach(p => {
+        const div = document.createElement("div");
+        div.className = "result";
+        div.innerHTML = `<h3>${p.title}</h3><p>${p.content}</p>`;
+        results.appendChild(div);
+    });
 });
 </script>
 
