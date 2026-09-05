@@ -2,33 +2,117 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>画面共有</title>
+    <title>画面共有（送信＋受信）</title>
     <style>
-        body {
-            margin: 0;
-            background: #222;
-            color: #fff;
-            font-family: sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        #content {
-            width: 80%;
-            height: 80%;
-            background: #333;
-            border-radius: 10px;
-            padding: 20px;
-            box-sizing: border-box;
-            overflow: auto;
-        }
+        body { font-family: sans-serif; margin: 20px; background: #222; color: #fff; }
+        textarea { width: 100%; height: 120px; }
+        button { margin: 5px 0; padding: 8px 16px; }
+        video { width: 100%; max-height: 60vh; background: #000; }
+        .section { border: 1px solid #555; padding: 15px; margin-top: 20px; border-radius: 10px; }
     </style>
 </head>
 <body>
-    <div id="content">
-        <h1>ここに共有したい内容を入れるゴン</h1>
-        <p>テキスト、画像、iframe、動画など何でもOKゴン。</p>
+
+    <h1>画面共有（送信＋受信）ゴン</h1>
+
+    <h2>① モード選択ゴン</h2>
+    <button onclick="setMode('sender')">送信側になるゴン</button>
+    <button onclick="setMode('receiver')">受信側になるゴン</button>
+
+    <div id="sender" class="section" style="display:none;">
+        <h2>送信側（画面共有する人）ゴン</h2>
+
+        <button id="startShare">画面共有開始ゴン</button><br>
+        <video id="localVideo" autoplay playsinline></video>
+
+        <h3>Offer（受信側に送る）ゴン</h3>
+        <button id="createOffer">Offer生成ゴン</button><br>
+        <textarea id="offerBox"></textarea>
+
+        <h3>Answer（受信側からもらう）ゴン</h3>
+        <textarea id="answerBox"></textarea><br>
+        <button id="setAnswer">Answer適用ゴン</button>
     </div>
+
+    <div id="receiver" class="section" style="display:none;">
+        <h2>受信側（画面を見る人）ゴン</h2>
+
+        <h3>送信側からもらったOfferを貼るゴン</h3>
+        <textarea id="offerBoxR"></textarea><br>
+        <button id="setOfferR">Offer適用ゴン</button>
+
+        <h3>Answer（送信側に返す）ゴン</h3>
+        <button id="createAnswerR">Answer生成ゴン</button><br>
+        <textarea id="answerBoxR"></textarea>
+
+        <h3>受信した画面ゴン</h3>
+        <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+
+<script>
+    let pc;
+    let localStream;
+
+    function setMode(mode) {
+        document.getElementById("sender").style.display = mode === "sender" ? "block" : "none";
+        document.getElementById("receiver").style.display = mode === "receiver" ? "block" : "none";
+        initPeer();
+    }
+
+    function initPeer() {
+        pc = new RTCPeerConnection({
+            iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+        });
+
+        pc.ontrack = (event) => {
+            document.getElementById("remoteVideo").srcObject = event.streams[0];
+        };
+
+        pc.onicecandidate = (event) => {
+            if (event.candidate) return;
+            if (pc.localDescription.type === "offer") {
+                document.getElementById("offerBox").value = JSON.stringify(pc.localDescription);
+            } else {
+                document.getElementById("answerBoxR").value = JSON.stringify(pc.localDescription);
+            }
+        };
+    }
+
+    // 送信側
+    document.getElementById("startShare").onclick = async () => {
+        try {
+            localStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+            document.getElementById("localVideo").srcObject = localStream;
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        } catch (e) {
+            alert("画面共有失敗ゴン: " + e);
+        }
+    };
+
+    document.getElementById("createOffer").onclick = async () => {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+    };
+
+    document.getElementById("setAnswer").onclick = async () => {
+        const answer = JSON.parse(document.getElementById("answerBox").value);
+        await pc.setRemoteDescription(answer);
+        alert("接続完了したかもゴン");
+    };
+
+    // 受信側
+    document.getElementById("setOfferR").onclick = async () => {
+        const offer = JSON.parse(document.getElementById("offerBoxR").value);
+        await pc.setRemoteDescription(offer);
+        alert("Offer受信したゴン");
+    };
+
+    document.getElementById("createAnswerR").onclick = async () => {
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+    };
+</script>
+
 </body>
 </html>
+
