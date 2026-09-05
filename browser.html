@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Mini Browser with History</title>
+<title>Mini Browser with Search</title>
 <style>
     body {
         margin: 0;
@@ -17,7 +17,7 @@
         gap: 8px;
         align-items: center;
     }
-    #url {
+    #url, #search {
         flex: 1;
         padding: 6px;
         border-radius: 4px;
@@ -38,6 +38,9 @@
     #go {
         background: #4caf50;
     }
+    #searchBtn {
+        background: #2196f3;
+    }
     iframe {
         width: 100%;
         height: calc(100vh - 50px);
@@ -51,33 +54,36 @@
 <div id="topbar">
     <button id="back" disabled>← 戻る</button>
     <button id="forward" disabled>進む →</button>
-    <input id="url" type="text" placeholder="URLを入力ゴン（例: https://example.com）">
+
+    <input id="url" type="text" placeholder="URLを入力ゴン">
     <button id="go">開くゴン</button>
+
+    <input id="search" type="text" placeholder="検索ワードを入力ゴン">
+    <button id="searchBtn">検索ゴン</button>
 </div>
 
 <iframe id="view" src=""></iframe>
 
 <script>
-const historyStack = [];   // 履歴配列ゴン
-let currentIndex = -1;     // 現在位置ゴン
+const historyStack = [];
+let currentIndex = -1;
 
 const urlInput = document.getElementById("url");
+const searchInput = document.getElementById("search");
 const view = document.getElementById("view");
 const backBtn = document.getElementById("back");
 const forwardBtn = document.getElementById("forward");
 const goBtn = document.getElementById("go");
+const searchBtn = document.getElementById("searchBtn");
 
-// 履歴ボタンの状態更新ゴン
 function updateButtons() {
     backBtn.disabled = currentIndex <= 0;
     forwardBtn.disabled = currentIndex >= historyStack.length - 1;
 }
 
-// 新しいURLを開くゴン
 function openUrl(url) {
     if (!url) return;
 
-    // 現在より先の履歴を削除（新しい分岐ゴン）
     if (currentIndex < historyStack.length - 1) {
         historyStack.splice(currentIndex + 1);
     }
@@ -90,7 +96,6 @@ function openUrl(url) {
     updateButtons();
 }
 
-// 戻るゴン
 backBtn.onclick = function() {
     if (currentIndex > 0) {
         currentIndex--;
@@ -101,7 +106,6 @@ backBtn.onclick = function() {
     }
 };
 
-// 進むゴン
 forwardBtn.onclick = function() {
     if (currentIndex < historyStack.length - 1) {
         currentIndex++;
@@ -112,22 +116,36 @@ forwardBtn.onclick = function() {
     }
 };
 
-// 「開く」ボタンゴン
 goBtn.onclick = function() {
     const url = urlInput.value.trim();
     openUrl(url);
 };
 
-// Enterキーで開くゴン
 urlInput.addEventListener("keydown", function(e) {
     if (e.key === "Enter") {
-        const url = urlInput.value.trim();
-        openUrl(url);
+        openUrl(urlInput.value.trim());
     }
 });
 
-// 初期ページ（任意）ゴン
-// openUrl("https://example.com");
+// 🔍 検索機能ゴン
+searchBtn.onclick = function() {
+    const keyword = searchInput.value.trim();
+    if (!keyword) return;
+
+    // Google検索URLを生成ゴン
+    const searchUrl = "https://www.google.com/search?q=" + encodeURIComponent(keyword);
+
+    openUrl(searchUrl);
+};
+
+searchInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        const keyword = searchInput.value.trim();
+        if (!keyword) return;
+        const searchUrl = "https://www.google.com/search?q=" + encodeURIComponent(keyword);
+        openUrl(searchUrl);
+    }
+});
 </script>
 
 </body>
