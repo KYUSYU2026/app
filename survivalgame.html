@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>サバゲー洞窟探索デモ（リュック付き）</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root{
+    --ui-bg: rgba(6,10,14,0.6);
+    --stone: linear-gradient(180deg,#7a7a6f,#5a5a4f);
+    --stone-edge: #3f3f36;
+    --accent: #ffd27a;
+  }
+  html,body{height:100%;margin:0;background:#071018;color:#fff;font-family:system-ui, "Hiragino Kaku Gothic ProN", "Segoe UI", Roboto;}
+  canvas{display:block;width:100vw;height:100vh;background:linear-gradient(#071018,#0b1b2a);}
+  /* HUD */
+  #hud{position:fixed;left:12px;top:12px;background:var(--ui-bg);padding:10px;border-radius:10px;backdrop-filter:blur(6px);width:320px}
+  #info{font-size:13px;margin-bottom:8px}
+  /* Quick slots (stone style) */
+  #quick{display:flex;gap:8px;align-items:center}
+  .qslot{
+    width:56px;height:56px;border-radius:10px;
+    background:var(--stone);
+    border:4px solid var(--stone-edge);
+    box-shadow:inset 0 6px 10px rgba(255,255,255,0.03), 0 6px 18px rgba(0,0,0,0.6);
+    display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;
+  }
+  .qslot.selected{outline:3px solid rgba(255,210,120,0.9);transform:translateY(-3px)}
+  .qslot .count{position:absolute;right:6px;bottom:4px;background:rgba(0,0,0,0.6);padding:2px 6px;border-radius:6px;font-size:12px}
+  /* Backpack UI */
+  #backpackUI{
+    position:fixed;right:12px;top:12px;width:520px;background:var(--ui-bg);padding:12px;border-radius:12px;display:none;backdrop-filter:blur(6px)
+  }
+  #bp-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:8px}
+  .bp-slot{
+    width:44px;height:44px;border-radius:8px;background:var(--stone);border:3px solid var(--stone-edge);
+    display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;
+  }
+  .bp-slot .count{position:absolute;right:4px;bottom:2px;font-size:11px;background:rgba(0,0,0,0.45);padding:1px 4px;border-radius:6px}
+  /* Tooltip */
+  #tooltip{position:fixed;pointer-events:none;padding:6px 8px;background:rgba(0,0,0,0.7);border-radius:6px;font-size:13px;display:none}
+  /* Simple button */
+  .btn{background:#1b2a36;padding:6px 8px;border-radius:6px;cursor:pointer;margin-top:8px;display:inline-block}
+  /* Player HUD */
+  #playerHUD{position:fixed;left:12px;bottom:12px;background:var(--ui-bg);padding:8px;border-radius:10px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div id="info"><strong>洞窟探索サバゲー デモ</strong><br>Xでリュック開閉 / 1-5でクイック切替 / Shift+ドラッグで分割</div>
+  <div id="quick" aria-label="quickbar"></div>
+  <div style="margin-top:8px;font-size:13px">所持重量: <span id="weight">0</span></div>
+</div>
+
+<div id="backpackUI" aria-hidden="true">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div><strong>リュック（10×4）</strong> <span style="font-size:12px;color:#cfe8ff">スタック: 1〜30</span></div>
+    <div><button id="closeBP" class="btn">閉じる (X)</button></div>
+  </div>
+  <div id="bp-grid" style="margin-top:12px"></div>
+</div>
+
+<div id="tooltip"></div>
+<div id="playerHUD"></div>
+
+<script>
+/* --- 基本設定 --- */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W = innerWidth, H = innerHeight;
+function resize(){ W = innerWidth; H = innerHeight; canvas.width = W; canvas.height = H; }
+addEventListener('resize', resize);
+resize();
+
+/* --- ゲーム状態 --- */
+const TILE = 48;
+const player = {
+  x: W/2, y: H/2, vx:0, vy:0, w:48, h:72,
+  onGround:false, facing:1, backpackOpen:false
+};
+
+/* Quickbar: 5 slots */
+const quickSlots = new Array(5).fill(null).map(()=>({id:null,count:0}));
+
+/* Backpack: 10x4 = 40 slots */
+const BP_COL = 10, BP_ROW = 4;
+const backpack = new Array(BP_COL*BP_ROW).fill(null).map(()=>({id:null,count:0}));
+
+/* アイテム定義（簡易） */
+const ITEMS = {
+  wood: {name:'木材',stackMax:30,color:'#8b5a2b'},
+  stone: {name:'石材',stackMax:30,color:'#7f7f7f'},
+  med: {name:'包帯',stackMax:10,color:'#f2e6d8'},
+  ammo: {name:'弾薬',stackMax:30,color:'#d9d94a'}
+};
+
+/* ワールドアイテム（地面に落ちている） */
+let worldItems = []; // {x,y,id,count}
+
+/* 初期アイテムを散らす */
+function spawnWorldItem(x,y,id,count){
+  worldItems.push({x,y,id,count});
+}
+for(let i=0;i<12;i++){
+  spawnWorldItem(100+Math.random()*(W-200), 200+Math.random()*(H-400), (Math.random()<0.5?'wood':'stone'), Math.floor(Math.random()*10)+1);
+}
+spawnWorldItem(W/2+120,H/2,'med',3);
+spawnWorldItem(W/2-200,H/2+40,'ammo',12);
+
+/* --- 入力 --- */
+const keys = {};
+addEventListener('keydown', e=> keys[e.key.toLowerCase()] = true);
+addEventListener('keyup', e=> keys[e.key.toLowerCase()] = false);
+
+/* Gamepad support */
+let gpState = null;
+function pollGamepad(){
+  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+  if(gps[0]) gpState = gps[0];
+  else gpState = null;
+  requestAnimationFrame(pollGamepad);
+}
+pollGamepad();
+
+/* --- UI構築 --- */
+const quickEl = document.getElementById('quick');
+const bpGridEl = document.getElementById('bp-grid');
+const backpackUI = document.getElementById('backpackUI');
+const tooltip = document.getElementById('tooltip');
+const weightEl = document.getElementById('weight');
+const playerHUD = document.getElementById('playerHUD');
+
+function createQuickUI(){
+  quickEl.innerHTML = '';
+  for(let i=0;i<5;i++){
+    const s = document.createElement('div');
+    s.className = 'qslot';
+    s.dataset.index = i;
+    s.addEventListener('click', ()=> selectQuick(i));
+    const cnt = document.createElement('div'); cnt.className='count';
+    s.appendChild(cnt);
+    quickEl.appendChild(s);
+  }
+}
+function createBPUI(){
+  bpGridEl.innerHTML = '';
+  for(let i=0;i<BP_COL*BP_ROW;i++){
+    const s = document.createElement('div');
+    s.className = 'bp-slot';
+    s.dataset.index = i;
+    s.addEventListener('mousedown', bpMouseDown);
+    s.addEventListener('mouseup', bpMouseUp);
+    s.addEventListener('mouseenter', bpMouseEnter);
+    s.addEventListener('mouseleave', bpMouseLeave);
+    const cnt = document.createElement('div'); cnt.className='count';
+    s.appendChild(cnt);
+    bpGridEl.appendChild(s);
+  }
+}
+createQuickUI();
+createBPUI();
+
+/* 選択中クイックスロット */
+let selectedQuick = 0;
+function selectQuick(i){
+  selectedQuick = i;
+  updateQuickUI();
+}
+function updateQuickUI(){
+  const nodes = quickEl.children;
+  for(let i=0;i<nodes.length;i++){
+    nodes[i].classList.toggle('selected', i===selectedQuick);
+    const slot = quickSlots[i];
+    const cnt = nodes[i].querySelector('.count');
+    if(slot.id){ nodes[i].style.background = ITEMS[slot.id].color; cnt.textContent = slot.count; } else { nodes[i].style.background=''; cnt.textContent=''; }
+  }
+}
+
+/* Backpack UI 更新 */
+function updateBPUI(){
+  const nodes = bpGridEl.children;
+  for(let i=0;i<nodes.length;i++){
+    const slot = backpack[i];
+    const cnt = nodes[i].querySelector('.count');
+    if(slot.id){ nodes[i].style.background = ITEMS[slot.id].color; cnt.textContent = slot.count; } else { nodes[i].style.background=''; cnt.textContent=''; }
+  }
+}
+
+/* Tooltip helpers */
+function showTooltip(text,x,y){ tooltip.style.left = x+'px'; tooltip.style.top = y+'px'; tooltip.textContent = text; tooltip.style.display='block'; }
+function hideTooltip(){ tooltip.style.display='none'; }
+
+/* Backpack open/close */
+function toggleBackpack(){
+  player.backpackOpen = !player.backpackOpen;
+  backpackUI.style.display = player.backpackOpen ? 'block' : 'none';
+  backpackUI.setAttribute('aria-hidden', (!player.backpackOpen).toString());
+  updateBPUI();
+}
+
+/* Close button */
+document.getElementById('closeBP').addEventListener('click', toggleBackpack);
+
+/* X key and gamepad button mapping */
+function handleOpenInput(){
+  if(keys['x']){ keys['x'] = false; toggleBackpack(); }
+  if(gpState){
+    // button 2 is X on many controllers
+    if(gpState.buttons[2] && gpState.buttons[2].pressed && !gpState._prevX){
+      toggleBackpack();
+    }
+    gpState._prevX = gpState.buttons[2] && gpState.buttons[2].pressed;
+  }
+}
+
+/* --- インベントリ操作（ドラッグ＆ドロップ、分割） --- */
+let drag = null; // {from:'bp'|'quick'|'world',index,slotRef,elem,mouseStart,shift}
+function bpMouseDown(e){
+  const idx = Number(e.currentTarget.dataset.index);
+  const slot = backpack[idx];
+  if(!slot.id) return;
+  drag = {from:'bp', index:idx, slot:slot, shift: e.shiftKey};
+  // visual feedback
+  e.currentTarget.style.transform = 'scale(0.95)';
+}
+function bpMouseUp(e){
+  const idx = Number(e.currentTarget.dataset.index);
+  const targetSlot = backpack[idx];
+  if(drag){
+    // drop logic: if same id and stackable, merge up to max
+    if(drag.from==='bp'){
+      if(drag.index === idx){ /* clicked same slot -> maybe split if shift */ 
+        if(drag.shift){
+          // split half
+          const s = backpack[drag.index];
+          if(s.id && s.count>1){
+            const half = Math.floor(s.count/2);
+            s.count -= half;
+            // find empty slot
+            const empty = backpack.findIndex(s=>!s.id);
+            if(empty>=0){ backpack[empty].id = s.id; backpack[empty].count = half; }
+          }
+        }
+      } else {
+        // move/merge
+        const src = backpack[drag.index];
+        const dst = backpack[idx];
+        if(!dst.id){
+          dst.id = src.id; dst.count = src.count; src.id = null; src.count = 0;
+        } else if(dst.id === src.id){
+          const max = ITEMS[dst.id].stackMax;
+          const can = Math.min(max - dst.count, src.count);
+          dst.count += can; src.count -= can;
+          if(src.count<=0){ src.id = null; src.count = 0; }
+        } else {
+          // swap
+          const tmp = {id:dst.id,count:dst.count};
+          dst.id = src.id; dst.count = src.count;
+          src.id = tmp.id; src.count = tmp.count;
+        }
+      }
+    }
+    drag = null;
+    updateBPUI(); updateQuickUI();
+    // reset transform
+    e.currentTarget.style.transform = '';
+  }
+}
+function bpMouseEnter(e){
+  const idx = Number(e.currentTarget.dataset.index);
+  const slot = backpack[idx];
+  if(slot.id) showTooltip(`${ITEMS[slot.id].name} x${slot.count}`, e.pageX+12, e.pageY+12);
+}
+function bpMouseLeave(e){ hideTooltip(); }
+
+/* Quickbar click to move item into quick slot */
+quickEl.addEventListener('click', (e)=>{
+  const el = e.target.closest('.qslot');
+  if(!el) return;
+  const idx = Number(el.dataset.index);
+  // if dragging from backpack, place into quick
+  if(drag && drag.from==='bp'){
+    const src = backpack[drag.index];
+    const dst = quickSlots[idx];
+    if(!dst.id){
+      dst.id = src.id; dst.count = src.count; src.id=null; src.count=0;
+    } else if(dst.id === src.id){
+      const max = ITEMS[dst.id].stackMax;
+      const can = Math.min(max - dst.count, src.count);
+      dst.count += can; src.count -= can;
+      if(src.count<=0){ src.id=null; src.count=0; }
+    } else {
+      // swap
+      const tmp = {id:dst.id,count:dst.count};
+      dst.id = src.id; dst.count = src.count;
+      src.id = tmp.id; src.count = tmp.count;
+    }
+    drag = null; updateQuickUI(); updateBPUI();
+    return;
+  }
+  selectQuick(idx);
+});
+
+/* Picking up world items */
+function tryPickup(){
+  // pick nearest within radius
+  const R = 48;
+  let nearest = null; let nd = 1e9;
+  for(const it of worldItems){
+    const d = Math.hypot(it.x - player.x, it.y - player.y);
+    if(d < R && d < nd){ nearest = it; nd = d; }
+  }
+  if(!nearest) return;
+  // try stack into quick first, then backpack
+  let remaining = nearest.count;
+  // quick: try existing stacks of same id
+  for(const s of quickSlots){
+    if(remaining<=0) break;
+    if(s.id === nearest.id){
+      const can = Math.min(ITEMS[s.id].stackMax - s.count, remaining);
+      s.count += can; remaining -= can;
+    }
+  }
+  // quick: empty slots
+  for(const s of quickSlots){
+    if(remaining<=0) break;
+    if(!s.id){
+      const put = Math.min(ITEMS[nearest.id].stackMax, remaining);
+      s.id = nearest.id; s.count = put; remaining -= put;
+    }
+  }
+  // backpack: existing stacks
+  for(const s of backpack){
+    if(remaining<=0) break;
+    if(s.id === nearest.id){
+      const can = Math.min(ITEMS[s.id].stackMax - s.count, remaining);
+      s.count += can; remaining -= can;
+    }
+  }
+  // backpack: empty slots
+  for(const s of backpack){
+    if(remaining<=0) break;
+    if(!s.id){
+      const put = Math.min(ITEMS[nearest.id].stackMax, remaining);
+      s.id = nearest.id; s.count = put; remaining -= put;
+    }
+  }
+  // update world item
+  if(remaining<=0){
+    const idx = worldItems.indexOf(nearest);
+    if(idx>=0) worldItems.splice(idx,1);
+  } else {
+    nearest.count = remaining;
+  }
+  updateQuickUI(); updateBPUI();
+}
+
+/* --- 建築（小屋設置） --- */
+let huts = []; // {x,y}
+function tryBuild(){
+  // require wood >= 10 in inventory (quick+backpack)
+  let woodTotal = 0;
+  for(const s of quickSlots) if(s.id==='wood') woodTotal += s.count;
+  for(const s of backpack) if(s.id==='wood') woodTotal += s.count;
+  if(woodTotal < 10) return false;
+  // consume 10 wood (from quick first)
+  let need = 10;
+  for(const s of quickSlots){
+    if(need<=0) break;
+    if(s.id==='wood'){
+      const take = Math.min(s.count, need); s.count -= take; need -= take;
+      if(s.count<=0){ s.id=null; s.count=0; }
+    }
+  }
+  for(const s of backpack){
+    if(need<=0) break;
+    if(s.id==='wood'){
+      const take = Math.min(s.count, need); s.count -= take; need -= take;
+      if(s.count<=0){ s.id=null; s.count=0; }
+    }
+  }
+  huts.push({x:player.x+80*(player.facing||1), y:player.y});
+  updateQuickUI(); updateBPUI();
+  return true;
+}
+
+/* --- 描画 --- */
+function drawPlayer(){
+  // body
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath(); ctx.ellipse(0, player.h/2+6, player.w*0.6, 10, 0,0,Math.PI*2); ctx.fill();
+  // torso
+  ctx.fillStyle = '#3aa0ff';
+  ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h);
+  // backpack (skin)
+  ctx.fillStyle = '#6b3f2f';
+  ctx.fillRect(-player.w/2 - 6, -player.h/2 + 6, player.w*0.4, player.h*0.6);
+  // straps
+  ctx.strokeStyle = '#2b1f18'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(-player.w/2+6, -player.h/2+6); ctx.lineTo(-player.w/2+6, player.h/2); ctx.stroke();
+  // head
+  ctx.fillStyle = '#ffd7b3'; ctx.beginPath(); ctx.ellipse(0, -player.h/2 - 12, 18, 18, 0,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawWorld(){
+  // ground
+  ctx.fillStyle = '#1b2b2f';
+  ctx.fillRect(0, H-120, W, 120);
+  // cave entrance (left)
+  ctx.fillStyle = '#0b0f12';
+  ctx.beginPath(); ctx.ellipse(120, H-120, 80, 60, 0,0,Math.PI*2); ctx.fill();
+  // huts
+  for(const h of huts){
+    ctx.fillStyle = '#6b4a2b';
+    ctx.fillRect(h.x-40, h.y-40, 80, 60);
+    ctx.fillStyle = '#3b2b1b';
+    ctx.fillRect(h.x-40, h.y-60, 80, 20);
+  }
+  // world items
+  for(const it of worldItems){
+    ctx.fillStyle = ITEMS[it.id].color;
+    ctx.beginPath(); ctx.arc(it.x, it.y, 12, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000'; ctx.font='12px system-ui'; ctx.fillText(it.count, it.x-6, it.y+4);
+  }
+}
+
+/* --- HUD描画（クイックスロット） --- */
+function drawHUD(){
+  // quick slots are DOM elements; update counts and selection
+  updateQuickUI();
+  // weight calculation
+  let weight = 0;
+  for(const s of quickSlots) if(s.id) weight += s.count;
+  for(const s of backpack) if(s.id) weight += s.count;
+  weightEl.textContent = weight;
+  // player HUD
+  playerHUD.innerHTML = `HP: 100 &nbsp; Stacks: ${weight}`;
+}
+
+/* --- ゲームループ --- */
+let last = performance.now();
+function loop(now){
+  const dt = Math.min((now-last)/1000, 0.033);
+  last = now;
+  // input
+  let move = 0;
+  if(keys['a']||keys['arrowleft']) move -= 1;
+  if(keys['d']||keys['arrowright']) move += 1;
+  // gamepad axis
+  if(gpState){
+    const ax = gpState.axes[0] || 0;
+    if(Math.abs(ax) > 0.2) move = ax;
+    // pickup (button0)
+    if(gpState.buttons[0] && gpState.buttons[0].pressed && !gpState._prevA){
+      tryPickup();
+    }
+    gpState._prevA = gpState.buttons[0] && gpState.buttons[0].pressed;
+    // build (button1 as example)
+    if(gpState.buttons[1] && gpState.buttons[1].pressed && !gpState._prevB){
+      tryBuild();
+    }
+    gpState._prevB = gpState.buttons[1] && gpState.buttons[1].pressed;
+  }
+  // movement physics
+  player.vx += move * 1200 * dt;
+  player.vx *= 0.85;
+  player.x += player.vx * dt;
+  // gravity simple
+  player.vy += 1800 * dt;
+  player.y += player.vy * dt;
+  if(player.y + player.h/2 > H-120){
+    player.y = H-120 - player.h/2; player.vy = 0; player.onGround = true;
+  } else player.onGround = false;
+  if(keys['w']||keys['arrowup']||keys[' ']){ if(player.onGround){ player.vy = -720; player.onGround=false; } }
+  // pickup key
+  if(keys['e']){ keys['e'] = false; tryPickup(); }
+  // build key (b)
+  if(keys['b']){ keys['b'] = false; tryBuild(); }
+  // toggle backpack (x)
+  handleOpenInput();
+  // draw
+  ctx.clearRect(0,0,W,H);
+  drawWorld();
+  drawPlayer();
+  drawHUD();
+  // update UI DOM visuals
+  updateQuickUI();
+  updateBPUI();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* --- 初期配置: 少しアイテムをバックパックに入れておく --- */
+backpack[0].id = 'wood'; backpack[0].count = 12;
+backpack[1].id = 'stone'; backpack[1].count = 8;
+quickSlots[0].id = 'ammo'; quickSlots[0].count = 12;
+updateQuickUI(); updateBPUI();
+
+/* --- マウスで世界アイテムを拾う（クリック） --- */
+canvas.addEventListener('click', (e)=>{
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  // if clicking near an item, pick it
+  for(const it of worldItems){
+    if(Math.hypot(it.x-mx, it.y-my) < 20){
+      // simulate player moving to it and pick
+      player.x = it.x; player.y = it.y - 20;
+      tryPickup();
+      break;
+    }
+  }
+});
+
+/* --- ドラッグ分割: Shift+クリック backpack slots handled above --- */
+/* --- 注意点: このデモは基本ロジックを示すための簡易実装です。拡張（UI改善、アニメ、保存、ネットワーク等）は自由に行ってください。 --- */
+
+</script>
+</body>
+</html>
