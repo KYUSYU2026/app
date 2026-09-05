@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Mini Browser</title>
+<title>Mini Browser with History</title>
 <style>
     body {
         margin: 0;
@@ -11,24 +11,32 @@
         color: #fff;
     }
     #topbar {
-        padding: 10px;
+        padding: 8px;
         background: #333;
         display: flex;
-        gap: 10px;
+        gap: 8px;
+        align-items: center;
     }
     #url {
         flex: 1;
-        padding: 8px;
-        border-radius: 5px;
+        padding: 6px;
+        border-radius: 4px;
         border: none;
     }
-    #go {
-        padding: 8px 15px;
+    button {
+        padding: 6px 10px;
         border: none;
-        background: #4caf50;
-        color: #fff;
-        border-radius: 5px;
+        border-radius: 4px;
         cursor: pointer;
+        background: #555;
+        color: #fff;
+    }
+    button:disabled {
+        background: #444;
+        cursor: default;
+    }
+    #go {
+        background: #4caf50;
     }
     iframe {
         width: 100%;
@@ -41,6 +49,8 @@
 <body>
 
 <div id="topbar">
+    <button id="back" disabled>← 戻る</button>
+    <button id="forward" disabled>進む →</button>
     <input id="url" type="text" placeholder="URLを入力ゴン（例: https://example.com）">
     <button id="go">開くゴン</button>
 </div>
@@ -48,11 +58,78 @@
 <iframe id="view" src=""></iframe>
 
 <script>
-document.getElementById("go").onclick = function() {
-    const u = document.getElementById("url").value;
-    document.getElementById("view").src = u;
+const historyStack = [];   // 履歴配列ゴン
+let currentIndex = -1;     // 現在位置ゴン
+
+const urlInput = document.getElementById("url");
+const view = document.getElementById("view");
+const backBtn = document.getElementById("back");
+const forwardBtn = document.getElementById("forward");
+const goBtn = document.getElementById("go");
+
+// 履歴ボタンの状態更新ゴン
+function updateButtons() {
+    backBtn.disabled = currentIndex <= 0;
+    forwardBtn.disabled = currentIndex >= historyStack.length - 1;
+}
+
+// 新しいURLを開くゴン
+function openUrl(url) {
+    if (!url) return;
+
+    // 現在より先の履歴を削除（新しい分岐ゴン）
+    if (currentIndex < historyStack.length - 1) {
+        historyStack.splice(currentIndex + 1);
+    }
+
+    historyStack.push(url);
+    currentIndex = historyStack.length - 1;
+
+    view.src = url;
+    urlInput.value = url;
+    updateButtons();
+}
+
+// 戻るゴン
+backBtn.onclick = function() {
+    if (currentIndex > 0) {
+        currentIndex--;
+        const url = historyStack[currentIndex];
+        view.src = url;
+        urlInput.value = url;
+        updateButtons();
+    }
 };
+
+// 進むゴン
+forwardBtn.onclick = function() {
+    if (currentIndex < historyStack.length - 1) {
+        currentIndex++;
+        const url = historyStack[currentIndex];
+        view.src = url;
+        urlInput.value = url;
+        updateButtons();
+    }
+};
+
+// 「開く」ボタンゴン
+goBtn.onclick = function() {
+    const url = urlInput.value.trim();
+    openUrl(url);
+};
+
+// Enterキーで開くゴン
+urlInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        const url = urlInput.value.trim();
+        openUrl(url);
+    }
+});
+
+// 初期ページ（任意）ゴン
+// openUrl("https://example.com");
 </script>
 
 </body>
 </html>
+
